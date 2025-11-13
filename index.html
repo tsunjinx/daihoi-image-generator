@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chào mừng đại hội đại biểu</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="main-wrapper">
+        <header class="page-header">
+            <h1>CHÀO MỪNG ĐẠI HỘI ĐẠI BIỂU ĐOÀN TNCS HỒ CHÍ MINH TỈNH QUẢNG NINH LẦN THỨ XIII, NHIỆM KỲ 2025-2030</h1>
+        </header>
+        
+        <div class="frame-logo" style="display: none;">
+            <img src="assets/images/LogoDH-Final.png" alt="Logo img" onerror="this.parentElement.style.display='none'">
+        </div>
+
+        <div class="frame-title" style="display: none;">
+            <img src="assets/images/title-content.png" alt="text" onerror="this.parentElement.style.display='none'">
+        </div>
+
+        <div class="flex sm:gap-[50px] gap-[20px] max-w-[1600px] w-full mx-auto main-screen">
+            <div class="input-place flex flex-col gap-[10px]">
+                <h2 style="margin: 0 0 20px 0; color: #333; font-size: 24px; font-weight: 700; text-align: center;">Tạo thông điệp</h2>
+                <div class="input-group mb-[10px]">
+                    </label>
+                    <div class="gradient-border-wrapper" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 0;">
+                        <label for="image-choose" style="display: block; padding: 12px 16px; color: #ffffff; text-align: center; cursor: pointer; margin: 0; font-weight: 600; border-radius: 10px;">
+                            Chọn ảnh
+                        </label>
+                        <input type="file" id="image-choose" name="avatar" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <div class="input-group flex flex-col gap-[10px]">
+                    <label for="name">
+                        <span>Họ và tên</span>
+                    </label>
+                    <div class="gradient-border-wrapper">
+                        <input type="text" id="name" class="gradient-border h-[40px]" placeholder="Họ và tên...">
+                    </div>
+                </div>
+                <div class="input-group flex flex-col gap-[10px]">
+                    <label for="title">
+                        <span>Chức vụ</span>
+                    </label>
+                    <div class="gradient-border-wrapper">
+                        <textarea type="text" id="title" class="gradient-border" placeholder="Chức vụ..." rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="input-group flex flex-col gap-[10px]">
+                    <label for="message">
+                        <span>Gửi lời nhắn đến đại hội</span>
+                    </label>
+                    <div class="gradient-border-wrapper">
+                        <textarea id="message" rows="5" class="gradient-border" placeholder="Lời nhắn..."></textarea>
+                    </div>
+                </div>
+                <div class="input-group flex flex-col gap-[10px]">
+                    <div class="gradient-border-wrapper gradient-border__btn cursor-pointer">
+                        <button id="submit" class="gradient-border text-white font-bold">
+                            Tải lời nhắn về
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="frame-wrapper" id="frame-wrapper">
+                <div class="frame-wrapper__img">
+                    <img src="img/template.png" alt="" class="w-full template-image">
+                    <div class="name">
+                        <span class="name-content"></span>
+                    </div>
+                    <div class="title">
+                        <span class="title-content"></span>
+                    </div>
+                    <div class="image-choosen">
+                        <img id="img-choosen" src="assets/images/placeholder.jpg" alt="" class="w-full h-full object-cover">
+                    </div>
+                    <div class="message">
+                        <p class="message-content"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="frame-icon" style="display: none;">
+            <img src="assets/images/icon-banner.png" alt="text" onerror="this.parentElement.style.display='none'">
+        </div>
+    </div>
+
+    <div id="cropperModal" class="modal">
+        <div class="modal-content">
+            <span class="close">x</span>
+            <h2 class="text-2xl mb-4">Cắt ảnh</h2>
+            <div class="relative w-full h-96">
+                <img id="cropperImage" src="" alt="Cropper Image" class="absolute top-0 left-0 w-full h-full">
+            </div>
+            <button id="saveCroppedImage" class="mt-5 bg-blue-500 text-white py-2 px-4 rounded">
+                Lưu
+            </button>
+        </div>
+    </div>
+
+    <div class="loader-wrapper" style="display: none">
+        <div id="loader" class="loader"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>
+

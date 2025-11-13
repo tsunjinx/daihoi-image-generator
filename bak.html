@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình tạo ảnh Thông điệp Đại hội</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Tải font Inter (thay thế cho Muli, UTM IMPACT vì chúng ta không có file font) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09adeb; /* Màu nền bạn yêu cầu */
+        }
+
+        /* Ẩn canvas gốc (dùng để vẽ) */
+        #renderCanvas {
+            display: none;
+        }
+
+        /* Style cho canvas xem trước (preview) */
+        #previewCanvas {
+            width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            border: 2px solid #fff;
+            background-color: #e0e0e0;
+        }
+
+        /* Thông báo tải font - Rất quan trọng */
+        .font-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <!-- Thông báo tải font -->
+    <div id="font-loading" class="font-loading-overlay">
+        <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        Đang tải tài nguyên (font, ảnh)...
+    </div>
+
+    <!-- Canvas gốc (ẩn đi) để vẽ ảnh kích thước đầy đủ -->
+    <canvas id="renderCanvas" width="5520" height="3105"></canvas>
+
+    <div class="w-full max-w-6xl mx-auto bg-white/30 backdrop-blur-md rounded-2xl shadow-xl p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Cột 1: Form nhập liệu -->
+        <div class="flex flex-col space-y-4">
+            <h1 class="text-3xl font-bold text-white text-center">Tạo thông điệp của bạn</h1>
+            
+            <div>
+                <label for="name" class="block text-sm font-medium text-white">Họ và tên (Đ/c:)</label>
+                <input type="text" id="name" placeholder="Nguyễn Hồng Hạnh" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            
+            <div>
+                <label for="position" class="block text-sm font-medium text-white">Chức vụ/Đơn vị</label>
+                <input type="text" id="position" placeholder="Phó Trưởng ban..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            
+            <div>
+                <label for="message" class="block text-sm font-medium text-white">Thông điệp kỳ vọng</label>
+                <textarea id="message" rows="5" placeholder="Tôi kỳ vọng Đại hội..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+            </div>
+            
+            <div>
+                <label for="userImage" class="block text-sm font-medium text-white">Ảnh đại diện của bạn</label>
+                <input type="file" id="userImage" accept="image/*" class="mt-1 block w-full text-sm text-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+
+            <div class="flex space-x-4">
+                <button id="previewButton" class="flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300">
+                    1. Xem trước
+                </button>
+                <button id="downloadButton" disabled class="flex-1 bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-700 transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    2. Tải ảnh về
+                </button>
+            </div>
+        </div>
+
+        <!-- Cột 2: Hiển thị Preview -->
+        <div>
+            <h2 class="text-2xl font-bold text-white text-center mb-4">Xem trước</h2>
+            <!-- Canvas này dùng để hiển thị preview cho người dùng -->
+            <canvas id="previewCanvas"></canvas>
+            <p id="status" class="text-center text-white mt-2"></p>
+        </div>
+
+    </div>
+
+    <script>
+        // *** KHAI BÁO BIẾN ***
+        const nameInput = document.getElementById('name');
+        const positionInput = document.getElementById('position');
+        const messageInput = document.getElementById('message');
+        const userImageInput = document.getElementById('userImage');
+        const previewButton = document.getElementById('previewButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const statusText = document.getElementById('status');
+        const fontLoadingDiv = document.getElementById('font-loading');
+
+        // Canvas 1 (ẨN): Dùng để vẽ ảnh gốc, chất lượng cao
+        const renderCanvas = document.getElementById('renderCanvas');
+        const ctx = renderCanvas.getContext('2d');
+        const CANVAS_WIDTH = 5520;
+        const CANVAS_HEIGHT = 3105;
+
+        // Canvas 2 (HIỂN THỊ): Dùng để show preview cho nhanh
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
+        let previewWidth = previewCanvas.clientWidth;
+        let previewHeight = (previewWidth * CANVAS_HEIGHT) / CANVAS_WIDTH;
+        previewCanvas.width = previewWidth;
+        previewCanvas.height = previewHeight;
+
+        // Tải ảnh mẫu (template)
+        const templateImage = new Image();
+        // templateImage.src = 'template.jpg'; // SẼ DI CHUYỂN XUỐNG DƯỚI
+        
+        let userImage = new Image();
+        let userImageLoaded = false;
+
+        // *** XỬ LÝ FONT ***
+        // Canvas cần thời gian để tải font. Chúng ta dùng document.fonts.ready
+        // Lưu ý: Tôi dùng font 'Inter' thay cho 'UTM IMPACT' và 'Muli' vì chúng là font web an toàn
+        // Nếu muốn dùng font tùy chỉnh, bạn PHẢI tải file font (ví dụ: .ttf, .woff) bằng CSS @font-face
+        const FONT_NAME = 'bold 110px "Inter", sans-serif';
+        const FONT_POSITION = '83px "Inter", sans-serif';
+        const FONT_MESSAGE = '92px "Inter", sans-serif';
+        
+        document.fonts.ready.then(() => {
+            console.log("Fonts đã tải xong.");
+            
+            // Gắn handler TRƯỚC KHI set src
+            templateImage.onload = () => {
+                console.log("Ảnh mẫu đã tải xong.");
+                // Vẽ ảnh mẫu lên cả 2 canvas
+                ctx.drawImage(templateImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                previewCtx.drawImage(templateImage, 0, 0, previewWidth, previewHeight);
+                fontLoadingDiv.style.display = 'none'; // Ẩn thông báo tải
+            };
+            templateImage.onerror = () => {
+                fontLoadingDiv.style.display = 'none';
+                // Thay thế alert() bằng thông báo trạng thái
+                statusText.textContent = "LỖI: Không thể tải file 'template.jpg'. Hãy chắc chắn file tồn tại và tên file chính xác.";
+                statusText.classList.add('text-red-400', 'font-bold');
+                console.error("Lỗi tải 'template.jpg'.");
+            };
+
+            // Bây giờ mới bắt đầu tải ảnh
+            // templateImage.src = 'template.jpg'; // QUAN TRỌNG: Đảm bảo file này tồn tại
+            
+            // --- SỬA LỖI TẠM THỜI ---
+            // Tôi đang dùng ảnh placeholder để fix lỗi "Lỗi tải template.jpg".
+            // Lỗi này xảy ra do file 'template.jpg' của bạn không nằm cùng thư mục với file .html khi chạy.
+            //
+            // **HƯỚNG DẪN KHI BẠN CHẠY TRÊN MÁY CỦA MÌNH:**
+            // 1. Đổi tên file ảnh mẫu của bạn (kích thước 5520x3105) thành chính xác là "template.jpg".
+            // 2. Đặt file "template.jpg" đó VÀO CÙNG MỘT THƯ MỤC với file "index.html" này.
+            // 3. Xóa dòng 'templateImage.src = "https://placehold.co/..."' dưới đây.
+            // 4. Bỏ comment (xóa dấu //) ở dòng "templateImage.src = 'template.jpg';"
+            //
+            templateImage.src = 'img/template.png';
+            templateImage.crossOrigin = "Anonymous"; // Cần thiết khi tải ảnh từ domain khác cho canvas
+        });
+
+
+        // *** XỬ LÝ UPLOAD ẢNH ***
+        userImageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    userImage.src = event.target.result;
+                    userImage.onload = () => {
+                        userImageLoaded = true;
+                        statusText.textContent = "Đã tải ảnh. Sẵn sàng xem trước.";
+                        console.log("User image loaded");
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // *** HÀM HỖ TRỢ NGẮT DÒNG ***
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            let words = text.split(' ');
+            let line = '';
+            
+            // Chia lại theo từng ký tự nếu 1 từ quá dài
+            const characters = text.split('');
+            let lines = [];
+            
+            line = '';
+            for(let n = 0; n < characters.length; n++) {
+                let testLine = line + characters[n]; // Thêm từng ký tự
+                let metrics = context.measureText(testLine);
+                let testWidth = metrics.width;
+                
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line); // Đẩy dòng cũ vào
+                    line = characters[n]; // Bắt đầu dòng mới
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line); // Đẩy dòng cuối cùng
+
+            // Vẽ từng dòng
+            for(let i = 0; i < lines.length; i++) {
+                context.fillText(lines[i], x, y);
+                y += lineHeight;
+            }
+        }
+
+
+        // *** HÀM VẼ CHÍNH ***
+        function drawCanvas() {
+            if (!userImageLoaded) {
+                statusText.textContent = "Vui lòng tải ảnh đại diện trước!";
+                return;
+            }
+
+            statusText.textContent = "Đang xử lý, vui lòng chờ...";
+            
+            // --- BƯỚC 1: LẤY DỮ LIỆU ---
+            const name = nameInput.value || "Nguyễn Hồng Hạnh";
+            const position = positionInput.value || "Chức vụ của bạn";
+            const message = messageInput.value || "Thông điệp kỳ vọng của bạn...";
+
+            // --- BƯỚC 2: VẼ LÊN CANVAS GỐC (5520x3105) ---
+            // 2.1. Xóa và vẽ lại ảnh mẫu (để cập nhật)
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            ctx.drawImage(templateImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // 2.2. Vẽ ảnh User (Tọa độ MỚI từ <map>)
+            // alt="square-img" coords="3101,1033,2313,1811"
+            // x: 2313, y: 1033, w: 788, h: 778
+            drawCroppedImage(ctx, userImage, 2313, 1033, 788, 778);
+
+            // 2.3. Cài đặt style chữ
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'left';
+            
+            // QUAN TRỌNG: Căn lề dưới (bottom baseline) cho Tên và Chức vụ
+            ctx.textBaseline = 'bottom'; 
+
+            // 2.4. Vẽ Tên (Tọa độ MỚI từ <map>)
+            // alt="hoVaTen" coords="2460,1880,3189,2003"
+            // x: 2460, y_baseline (bottom): 2003
+            ctx.font = FONT_NAME;
+            ctx.fillText(name, 2460, 2003);
+
+            // 2.5. Vẽ Chức vụ (Tọa độ MỚI từ <map>)
+            // alt="chucVu" coords="3220,2300,2262,2040"
+            // x: 2262, y_baseline (bottom): 2300
+            ctx.font = FONT_POSITION;
+            ctx.fillText(position, 2262, 2300);
+
+            // QUAN TRỌNG: Reset baseline về default (alphabetic) cho hàm wrapText
+            ctx.textBaseline = 'alphabetic'; 
+
+            // 2.6. Vẽ Thông điệp (Tọa độ MỚI từ <map>)
+            // alt="kyVong" coords="3282,940,5303,2331"
+            // x: 3282, y_top: 940, maxWidth: 2021
+            // Font size là 92px. Line height là 138px.
+            // y_baseline_firstline = y_top (940) + font_size (92) = 1032
+            ctx.font = FONT_MESSAGE;
+            wrapText(ctx, message, 3282, 1032, 2021, 138);
+
+            // --- BƯỚC 3: SAO CHÉP SANG PREVIEW CANVAS ---
+            // Tính toán lại tỷ lệ
+            previewWidth = previewCanvas.clientWidth;
+            previewHeight = (previewWidth * CANVAS_HEIGHT) / CANVAS_WIDTH;
+            previewCanvas.width = previewWidth; // Set lại kích thước attribute
+            previewCanvas.height = previewHeight;
+
+            // Sao chép từ canvas gốc sang canvas preview (nhanh và hiệu quả)
+            previewCtx.drawImage(renderCanvas, 0, 0, previewWidth, previewHeight);
+
+            statusText.textContent = "Xem trước thành công! Bạn có thể tải về.";
+            downloadButton.disabled = false; // Cho phép tải về
+        }
+        
+        // Hàm vẽ ảnh crop (nâng cao)
+        function drawCroppedImage(context, img, x, y, w, h) {
+            const imgWidth = img.naturalWidth;
+            const imgHeight = img.naturalHeight;
+            
+            // Tìm kích thước nhỏ nhất làm chuẩn (để crop vuông)
+            const minDim = Math.min(imgWidth, imgHeight);
+            const sourceX = (imgWidth - minDim) / 2;
+            const sourceY = (imgHeight - minDim) / 2;
+
+            context.drawImage(
+                img,
+                sourceX, // Tọa độ x nguồn
+                sourceY, // Tọa độ y nguồn
+                minDim,  // Chiều rộng nguồn (vuông)
+                minDim,  // Chiều cao nguồn (vuông)
+                x,       // Tọa độ x đích
+                y,       // Tọa độ y đích
+                w,       // Chiều rộng đích
+                h        // Chiều cao đích
+            );
+        }
+
+        // *** GẮN SỰ KIỆN ***
+        previewButton.addEventListener('click', drawCanvas);
+
+        downloadButton.addEventListener('click', () => {
+            if (downloadButton.disabled) return;
+
+            // Tạo link tải về
+            const dataURL = renderCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'thong-diep-dai-hoi.png';
+            
+            // Tự động click
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+        
+        // Xử lý thay đổi kích thước cửa sổ (để preview responsive)
+        window.addEventListener('resize', () => {
+            previewWidth = previewCanvas.clientWidth;
+            if (previewWidth === 0) { // Nếu bị ẩn
+                previewWidth = document.querySelector('.md\\:grid-cols-2').clientWidth / 2;
+            }
+            previewHeight = (previewWidth * CANVAS_HEIGHT) / CANVAS_WIDTH;
+            previewCanvas.width = previewWidth;
+            previewCanvas.height = previewHeight;
+
+            // Vẽ lại preview nếu đã có ảnh
+            if (userImageLoaded) {
+                 previewCtx.drawImage(renderCanvas, 0, 0, previewWidth, previewHeight);
+            } else if (templateImage.complete) {
+                previewCtx.drawImage(templateImage, 0, 0, previewWidth, previewHeight);
+            }
+        });
+
+    </script>
+</body>
+</html>
