@@ -87,75 +87,34 @@ $(document).ready(function () {
       var frameWrapper = document.getElementById("frame-wrapper");
       const scaleObject = window.innerWidth < 768 ? 10 : 5;
       
-      // Get the image container (frame-wrapper__img) which is the actual positioning context
+      // Get the image container and the actual template image
       const imgContainer = frameWrapper.querySelector('.frame-wrapper__img');
+      const templateImg = imgContainer ? imgContainer.querySelector('img.template-image') : null;
       
-      // Store original wrapper dimensions BEFORE removing padding
-      // This ensures we maintain the exact same visual layout
-      const originalWrapperWidth = frameWrapper.offsetWidth;
-      const originalWrapperHeight = frameWrapper.offsetHeight;
-      const computedPadding = window.getComputedStyle(frameWrapper).padding;
-      const paddingValue = parseInt(computedPadding) || 15; // Default 15px if can't parse
+      // CRITICAL: Use the template image's natural dimensions to maintain aspect ratio
+      // Template is 5760x3240 (16:9), so we need to maintain this exact ratio
+      // Get the displayed width of the image container (while padding is still there)
+      const imgContainerWidth = imgContainer ? imgContainer.offsetWidth : frameWrapper.offsetWidth;
       
-      // Calculate the image container's actual content dimensions (without padding)
-      const imgContainerContentWidth = originalWrapperWidth - (paddingValue * 2);
-      const imgContainerContentHeight = imgContainerContentWidth * 0.5625; // 16:9 aspect ratio
+      // Calculate height based on template's aspect ratio (5760:3240 = 16:9 = 56.25%)
+      // This ensures percentage positioning works the same in preview and export
+      const imgContainerHeight = imgContainerWidth * (3240 / 5760); // Exact template ratio
       
       // Store original styles
       const originalBg = frameWrapper.style.background;
-      const originalPaddingStyle = frameWrapper.style.padding;
+      const originalPadding = frameWrapper.style.padding;
       const originalBorderRadius = frameWrapper.style.borderRadius;
       const originalBoxShadow = frameWrapper.style.boxShadow;
       const originalBorder = frameWrapper.style.border;
       const originalOverflow = frameWrapper.style.overflow;
-      const originalImgPosition = imgContainer ? imgContainer.style.position : '';
-      const originalImgWidth = imgContainer ? imgContainer.style.width : '';
-      const originalImgHeight = imgContainer ? imgContainer.style.height : '';
-      const originalImgPaddingTop = imgContainer ? imgContainer.style.paddingTop : '';
       
-      // Remove white border styling temporarily from wrapper
+      // Remove white border styling temporarily
       frameWrapper.style.background = "transparent";
       frameWrapper.style.padding = "0";
       frameWrapper.style.borderRadius = "0";
       frameWrapper.style.boxShadow = "none";
       frameWrapper.style.border = "none";
       frameWrapper.style.overflow = "hidden";
-      
-      // CRITICAL: Set explicit dimensions on wrapper to match the image container content area
-      // This ensures the positioning context doesn't change
-      frameWrapper.style.width = imgContainerContentWidth + "px";
-      frameWrapper.style.height = imgContainerContentHeight + "px";
-      
-      // Ensure imgContainer maintains its aspect ratio and positioning
-      if (imgContainer) {
-        imgContainer.style.position = "relative";
-        imgContainer.style.width = "100%";
-        imgContainer.style.height = "100%";
-        imgContainer.style.paddingTop = "0"; // Remove padding-top since we're using explicit height
-      }
-      
-      // Store original name position
-      const nameElement = document.querySelector('.name');
-      const originalNameTop = nameElement ? nameElement.style.top : '';
-      const originalNameLeft = nameElement ? nameElement.style.left : '';
-      
-      // Calculate precise positioning for export
-      // The name coordinates are: 2460,1880,3362,2022 on 5760x3240 template
-      // We need to ensure the name aligns with "Đ/c:" baseline in the template
-      // The issue is that when we change container dimensions, percentage calculations shift
-      // Solution: Calculate the position based on the actual image container dimensions
-      if (nameElement && imgContainer) {
-        // Get the computed style to get the actual percentage from CSS
-        const computedStyle = window.getComputedStyle(nameElement);
-        const cssTop = computedStyle.top;
-        
-        // The CSS has top: 58.10%, but we need to adjust for export
-        // Since the image container now has explicit height (not padding-top),
-        // the percentage calculation should be the same, but let's ensure alignment
-        // Try using the coordinate-based calculation: 1880/3240 = 58.02%
-        // But account for text baseline - move down slightly to align with Đ/c: baseline
-        nameElement.style.top = "59.26%"; // Adjusted to align with Đ/c: baseline
-      }
       
       // Ensure all text elements are visible and properly styled
       $(".name-content, .title-content, .message-content").css({
@@ -165,9 +124,26 @@ $(document).ready(function () {
       
       // Small delay to ensure rendering
       setTimeout(function() {
-        // After removing padding, calculate the actual content dimensions
-        const contentWidth = frameWrapper.offsetWidth;
-        const contentHeight = frameWrapper.offsetHeight;
+        // Use the dimensions we calculated BEFORE removing padding
+        // These maintain the exact template aspect ratio (5760:3240)
+        // This ensures percentage positioning is consistent between preview and export
+        const contentWidth = imgContainerWidth;
+        const contentHeight = imgContainerHeight;
+        
+        // Ensure we have valid dimensions
+        if (contentWidth <= 0 || contentHeight <= 0) {
+          console.error("Invalid dimensions:", contentWidth, contentHeight);
+          alert("Không thể lấy kích thước ảnh. Vui lòng thử lại.");
+          // Restore styles
+          frameWrapper.style.background = originalBg;
+          frameWrapper.style.padding = originalPadding;
+          frameWrapper.style.borderRadius = originalBorderRadius;
+          frameWrapper.style.boxShadow = originalBoxShadow;
+          frameWrapper.style.border = originalBorder;
+          frameWrapper.style.overflow = originalOverflow;
+          $(".loader-wrapper").hide();
+          return;
+        }
         
         var options = {
           width: contentWidth * scaleObject,
@@ -186,7 +162,7 @@ $(document).ready(function () {
           }
         };
         
-        // Capture the wrapper - padding has been removed so no border will appear
+        // Capture the wrapper (padding already removed, so no border)
         const captureTarget = frameWrapper;
         
         domtoimage
@@ -196,26 +172,11 @@ $(document).ready(function () {
             domtoimage.toPng(captureTarget, options).then(function (data1) {
               // Restore original styles
               frameWrapper.style.background = originalBg;
-              frameWrapper.style.padding = originalPaddingStyle;
+              frameWrapper.style.padding = originalPadding;
               frameWrapper.style.borderRadius = originalBorderRadius;
               frameWrapper.style.boxShadow = originalBoxShadow;
               frameWrapper.style.border = originalBorder;
               frameWrapper.style.overflow = originalOverflow;
-              frameWrapper.style.width = ""; // Reset to auto
-              frameWrapper.style.height = ""; // Reset to auto
-              
-              // Restore imgContainer styles
-              if (imgContainer) {
-                imgContainer.style.position = originalImgPosition;
-                imgContainer.style.width = originalImgWidth;
-                imgContainer.style.height = originalImgHeight;
-                imgContainer.style.paddingTop = originalImgPaddingTop;
-              }
-              
-              // Restore name position
-              if (nameElement) {
-                nameElement.style.top = originalNameTop || ""; // Reset to original
-              }
               
               var link = document.createElement("a");
               link.download = "Guiloiyeuthuong.png";
@@ -229,25 +190,15 @@ $(document).ready(function () {
           .catch(function (error) {
             // Restore original styles on error
             frameWrapper.style.background = originalBg;
-            frameWrapper.style.padding = originalPaddingStyle;
+            frameWrapper.style.padding = originalPadding;
             frameWrapper.style.borderRadius = originalBorderRadius;
             frameWrapper.style.boxShadow = originalBoxShadow;
             frameWrapper.style.border = originalBorder;
             frameWrapper.style.overflow = originalOverflow;
-            frameWrapper.style.width = ""; // Reset to auto
-            frameWrapper.style.height = ""; // Reset to auto
-            
-            // Restore imgContainer styles
-            if (imgContainer) {
-              imgContainer.style.position = originalImgPosition;
-              imgContainer.style.width = originalImgWidth;
-              imgContainer.style.height = originalImgHeight;
-              imgContainer.style.paddingTop = originalImgPaddingTop;
-            }
             
             // Restore name position
             if (nameElement) {
-              nameElement.style.top = originalNameTop || ""; // Reset to original
+              nameElement.style.top = originalNameTop || "";
             }
             
             console.error("Error generating image:", error);
