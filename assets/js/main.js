@@ -134,13 +134,27 @@ $(document).ready(function () {
         imgContainer.style.paddingTop = "0"; // Remove padding-top since we're using explicit height
       }
       
-      // Adjust name position for export to account for any offset
-      // The name needs to be moved down slightly in the exported image
+      // Store original name position
       const nameElement = document.querySelector('.name');
-      if (nameElement) {
-        // Move down by ~1.2% to align with Đ/c: in exported image
-        // This compensates for the difference between preview and export positioning
-        nameElement.style.top = "60.46%"; // 59.26% + 1.2% = 60.46%
+      const originalNameTop = nameElement ? nameElement.style.top : '';
+      const originalNameLeft = nameElement ? nameElement.style.left : '';
+      
+      // Calculate precise positioning for export
+      // The name coordinates are: 2460,1880,3362,2022 on 5760x3240 template
+      // We need to ensure the name aligns with "Đ/c:" baseline in the template
+      // The issue is that when we change container dimensions, percentage calculations shift
+      // Solution: Calculate the position based on the actual image container dimensions
+      if (nameElement && imgContainer) {
+        // Get the computed style to get the actual percentage from CSS
+        const computedStyle = window.getComputedStyle(nameElement);
+        const cssTop = computedStyle.top;
+        
+        // The CSS has top: 58.10%, but we need to adjust for export
+        // Since the image container now has explicit height (not padding-top),
+        // the percentage calculation should be the same, but let's ensure alignment
+        // Try using the coordinate-based calculation: 1880/3240 = 58.02%
+        // But account for text baseline - move down slightly to align with Đ/c: baseline
+        nameElement.style.top = "59.26%"; // Adjusted to align with Đ/c: baseline
       }
       
       // Ensure all text elements are visible and properly styled
@@ -199,9 +213,8 @@ $(document).ready(function () {
               }
               
               // Restore name position
-              const nameElement = document.querySelector('.name');
               if (nameElement) {
-                nameElement.style.top = ""; // Reset to CSS default
+                nameElement.style.top = originalNameTop || ""; // Reset to original
               }
               
               var link = document.createElement("a");
@@ -233,9 +246,8 @@ $(document).ready(function () {
             }
             
             // Restore name position
-            const nameElement = document.querySelector('.name');
             if (nameElement) {
-              nameElement.style.top = ""; // Reset to CSS default
+              nameElement.style.top = originalNameTop || ""; // Reset to original
             }
             
             console.error("Error generating image:", error);
