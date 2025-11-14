@@ -221,14 +221,21 @@ label span {
 
 .frame-wrapper__img {
   position: relative;
-  padding-top: 56.25%;
-  overflow: visible;
   width: 100%;
+  overflow: hidden;
   box-sizing: border-box;
-  /* Ensure positioning context for absolute children */
   transform: translateZ(0);
-  /* Create a new stacking context */
   isolation: isolate;
+  aspect-ratio: 1920 / 1080;
+}
+
+.frame-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
 }
 
 .frame-wrapper__img .name,
@@ -236,11 +243,9 @@ label span {
 .frame-wrapper__img .message,
 .frame-wrapper__img .image-choosen {
   position: absolute;
-  /* Position relative to frame-wrapper__img, not affected by frame-wrapper padding */
-  /* Use percentage-based positioning that scales with the image container */
 }
 
-.frame-wrapper__img img {
+.frame-canvas img.template-image {
   position: absolute;
   left: 0;
   top: 0;
@@ -257,11 +262,10 @@ label span {
 
 .image-choosen {
   position: absolute;
-  /* square-img: coords="3101,1033,2313,1811" on 5760x3240 template */
-  left: 40.16%; /* 2313/5760 */
-  top: 31.88%; /* 1033/3240 */
-  width: 13.67%; /* 788/5760 */
-  height: 24.01%; /* 778/3240 */
+  left: 769px;
+  top: 342px;
+  width: 266px;
+  height: 263px;
   z-index: 1;
   border-radius: 0;
   overflow: hidden;
@@ -294,39 +298,33 @@ label span {
 
 .name {
   position: absolute;
-  /* hoVaTen: coords="2460,1880,3362,2022" on 5760x3240 template */
-  /* Position accounts for "Đ/c:" already in template - name starts right after it */
-  left: 42.71%; /* 2460/5760 - start of coordinate area */
-  top: 58.10%; /* 1920/3240 - adjusted down to align with Đ/c: baseline */
-  width: 15.66%; /* 902/5760 */
-  height: 4.38%; /* 142/3240 */
+  left: 818px;
+  top: 637px;
+  width: 268px;
+  min-height: 29px;
   text-align: left;
-  vertical-align: middle;
   padding: 0;
   margin: 0;
   font-family: "Roboto", sans-serif;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 25px;
   color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  display: block;
+  line-height: 1.2;
   z-index: 10;
-  white-space: nowrap;
-  overflow: visible;
+  white-space: normal;
+  overflow: hidden;
   box-sizing: border-box;
-  /* Ensure it stays within the image container bounds */
   min-width: 0;
   max-width: 100%;
 }
 
 .name-content {
-  display: inline-block;
+  display: block;
   line-height: 1.2;
   color: #ffffff;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .name-content span {
@@ -336,32 +334,29 @@ label span {
 
 .title {
   position: absolute;
-  /* chucVu: coords="3220,2300,2262,2040" on 5760x3240 template */
-  left: 39.27%; /* 2262/5760 */
-  top: 62.96%; /* 2040/3240 */
-  width: 16.63%; /* 958/5760 */
-  height: 8.02%; /* 260/3240 */
-  padding-left: 3px;
-  padding-right: 3px;
-  line-height: 1.2;
+  left: 746px;
+  top: 660px;
+  width: 317px;
+  min-height: 65px;
+  padding: 0 3px;
+  line-height: 1.3;
   text-align: center;
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
+  display: block;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 18px;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
 }
 
 .message {
   position: absolute;
-  /* kyVong: coords="3282,940,5303,2331" on 5760x3240 template */
-  left: 56.98%; /* 3282/5760 */
-  top: 29.01%; /* 940/3240 */
-  width: 35.09%; /* 2021/5760 */
-  height: 42.93%; /* 1391/3240 */
-  font-size: 14px;
+  left: 1108px;
+  top: 324px;
+  width: 655px;
+  height: 424px;
+  font-size: 16px;
   line-height: 1.5;
   color: #ffffff;
   letter-spacing: 1.2px;

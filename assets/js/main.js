@@ -1,3 +1,36 @@
+const TEMPLATE_WIDTH = 1920;
+const TEMPLATE_HEIGHT = 1080;
+function debounce(fn, delay) {
+  let timer;
+  return function () {
+    const args = arguments;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      fn.apply(null, args);
+    }, delay);
+  };
+}
+
+function scaleFrameCanvas() {
+  const wrapper = document.querySelector(".frame-wrapper__img");
+  if (!wrapper) {
+    return;
+  }
+  const canvas = wrapper.querySelector(".frame-canvas");
+  if (!canvas) {
+    return;
+  }
+  const wrapperWidth = wrapper.offsetWidth;
+  if (!wrapperWidth) {
+    return;
+  }
+  const scale = wrapperWidth / TEMPLATE_WIDTH;
+  canvas.style.transform = "scale(" + scale + ")";
+  wrapper.style.height = TEMPLATE_HEIGHT * scale + "px";
+}
+
+const scaleFrameCanvasDebounced = debounce(scaleFrameCanvas, 100);
+
 $(document).ready(function () {
   let cropper;
   const $imageChoose = $("#image-choose");
@@ -73,187 +106,173 @@ $(document).ready(function () {
   $("#message").on("input", function () {
     $(".message-content").text($(this).val());
   });
+
+  scaleFrameCanvas();
+  $(window).on("resize", scaleFrameCanvasDebounced);
   
-  $("#submit").click(function () {
-    $(".loader-wrapper").show();
-    
-    // Wait for fonts to be loaded, especially Roboto
-    Promise.all([
+  function waitForExportFonts() {
+    if (!document.fonts) {
+      return Promise.resolve();
+    }
+    return Promise.all([
       document.fonts.ready,
-      document.fonts.load('400 12px "Roboto"'),
-      document.fonts.load('bold 12px "Roboto"'),
-      document.fonts.load('italic 14px "Roboto"')
-    ]).then(function() {
-      var frameWrapper = document.getElementById("frame-wrapper");
-      const scaleObject = window.innerWidth < 768 ? 10 : 5;
-      
-      // Get the image container and the actual template image
-      const imgContainer = frameWrapper.querySelector('.frame-wrapper__img');
-      const templateImg = imgContainer ? imgContainer.querySelector('img.template-image') : null;
-      
-      // CRITICAL: Use the template image's natural dimensions to maintain aspect ratio
-      // Template is 5760x3240 (16:9), so we need to maintain this exact ratio
-      // Get the displayed width of the image container (while padding is still there)
-      const imgContainerWidth = imgContainer ? imgContainer.offsetWidth : frameWrapper.offsetWidth;
-      
-      // Calculate height based on template's aspect ratio (5760:3240 = 16:9 = 56.25%)
-      // This ensures percentage positioning works the same in preview and export
-      const imgContainerHeight = imgContainerWidth * (3240 / 5760); // Exact template ratio
-      
-      // Store original styles
-      const originalBg = frameWrapper.style.background;
-      const originalPadding = frameWrapper.style.padding;
-      const originalBorderRadius = frameWrapper.style.borderRadius;
-      const originalBoxShadow = frameWrapper.style.boxShadow;
-      const originalBorder = frameWrapper.style.border;
-      const originalOverflow = frameWrapper.style.overflow;
-      
-      // Remove white border styling temporarily
-      frameWrapper.style.background = "transparent";
-      frameWrapper.style.padding = "0";
-      frameWrapper.style.borderRadius = "0";
-      frameWrapper.style.boxShadow = "none";
-      frameWrapper.style.border = "none";
-      frameWrapper.style.overflow = "hidden";
-      
-      // Ensure all text elements are visible and properly styled
-      $(".name-content, .title-content, .message-content").css({
-        "visibility": "visible",
-        "opacity": "1"
-      });
-      
-      // Small delay to ensure rendering
-      setTimeout(function() {
-        // Use the dimensions we calculated BEFORE removing padding
-        // These maintain the exact template aspect ratio (5760:3240)
-        // This ensures percentage positioning is consistent between preview and export
-        const contentWidth = imgContainerWidth;
-        const contentHeight = imgContainerHeight;
-        
-        // Ensure we have valid dimensions
-        if (contentWidth <= 0 || contentHeight <= 0) {
-          console.error("Invalid dimensions:", contentWidth, contentHeight);
-          alert("Không thể lấy kích thước ảnh. Vui lòng thử lại.");
-          // Restore styles
-          frameWrapper.style.background = originalBg;
-          frameWrapper.style.padding = originalPadding;
-          frameWrapper.style.borderRadius = originalBorderRadius;
-          frameWrapper.style.boxShadow = originalBoxShadow;
-          frameWrapper.style.border = originalBorder;
-          frameWrapper.style.overflow = originalOverflow;
-          $(".loader-wrapper").hide();
-          return;
-        }
-        
-        var options = {
-          width: contentWidth * scaleObject,
-          height: contentHeight * scaleObject,
-          style: {
-            transform: "scale(" + scaleObject + ")",
-            transformOrigin: "top left",
+      document.fonts.load('400 14px "Roboto"'),
+      document.fonts.load('700 14px "Roboto"'),
+      document.fonts.load('italic 16px "Roboto"'),
+    ]);
+  }
+
+function cloneCanvasForExport(canvas) {
+  const hiddenHost = document.createElement("div");
+  hiddenHost.style.position = "fixed";
+  hiddenHost.style.top = "-10000px";
+  hiddenHost.style.left = "-10000px";
+  hiddenHost.style.width = TEMPLATE_WIDTH + "px";
+  hiddenHost.style.height = TEMPLATE_HEIGHT + "px";
+  hiddenHost.style.pointerEvents = "none";
+  hiddenHost.style.opacity = "0";
+  hiddenHost.style.zIndex = "-1";
+
+  const clone = canvas.cloneNode(true);
+  clone.style.transform = "none";
+  clone.style.width = TEMPLATE_WIDTH + "px";
+  clone.style.height = TEMPLATE_HEIGHT + "px";
+  clone.style.margin = "0";
+  clone.style.position = "relative";
+  clone.style.background = "transparent";
+  clone.style.border = "none";
+  clone.style.borderRadius = "0";
+  clone.style.boxShadow = "none";
+  clone.style.overflow = "hidden";
+
+  hiddenHost.appendChild(clone);
+  document.body.appendChild(hiddenHost);
+
+  return {
+    node: clone,
+    cleanup: function () {
+      if (hiddenHost && hiddenHost.parentNode) {
+        hiddenHost.parentNode.removeChild(hiddenHost);
+      }
+    },
+  };
+}
+
+  function triggerDownload(dataUrl, filename) {
+    const link = document.createElement("a");
+    link.download = filename;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function ensureTemplateReady(templateImg, fallbackWidth, fallbackHeight) {
+    return new Promise(function (resolve, reject) {
+      if (!templateImg) {
+        resolve({
+          width: fallbackWidth,
+          height: fallbackHeight,
+        });
+        return;
+      }
+
+      function finalize() {
+        const naturalWidth = templateImg.naturalWidth || fallbackWidth;
+        const naturalHeight = templateImg.naturalHeight || fallbackHeight;
+        resolve({ width: naturalWidth, height: naturalHeight });
+      }
+
+      if (templateImg.complete && templateImg.naturalWidth) {
+        finalize();
+      } else {
+        templateImg.addEventListener(
+          "load",
+          function () {
+            finalize();
           },
-          quality: 1,
-          useCORS: true,
-          cacheBust: true,
-          bgcolor: "transparent",
-          filter: function(node) {
-            // Ensure all text nodes are included
-            return (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE');
-          }
-        };
-        
-        // Capture the wrapper (padding already removed, so no border)
-        const captureTarget = frameWrapper;
-        
+          { once: true }
+        );
+        templateImg.addEventListener(
+          "error",
+          function () {
+            reject(new Error("Không thể tải template."));
+          },
+          { once: true }
+        );
+      }
+    });
+  }
+
+  function buildExportImage() {
+    return new Promise(function (resolve, reject) {
+      const frameWrapper = document.getElementById("frame-wrapper");
+      if (!frameWrapper) {
+        reject(new Error("Không tìm thấy khung ảnh."));
+        return;
+      }
+
+      const canvas = frameWrapper.querySelector(".frame-canvas");
+      if (!canvas) {
+        reject(new Error("Không tìm thấy nội dung cần xuất."));
+        return;
+      }
+
+      const templateImg = canvas.querySelector("img.template-image");
+      const DEFAULT_WIDTH = TEMPLATE_WIDTH;
+      const DEFAULT_HEIGHT = TEMPLATE_HEIGHT;
+
+      ensureTemplateReady(templateImg, DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        .then(function (dimensions) {
+          const { width: naturalWidth, height: naturalHeight } = dimensions;
+        const { node, cleanup } = cloneCanvasForExport(canvas);
+
         domtoimage
-          .toPng(captureTarget, options)
+          .toPng(node, {
+            width: naturalWidth,
+            height: naturalHeight,
+            quality: 1,
+            useCORS: true,
+            cacheBust: true,
+            bgcolor: "transparent",
+            filter: function (node) {
+              const tagName = node.tagName ? node.tagName.toLowerCase() : "";
+              return tagName !== "script" && tagName !== "style";
+            },
+          })
           .then(function (dataUrl) {
-            // Double render for better quality
-            domtoimage.toPng(captureTarget, options).then(function (data1) {
-              // Restore original styles
-              frameWrapper.style.background = originalBg;
-              frameWrapper.style.padding = originalPadding;
-              frameWrapper.style.borderRadius = originalBorderRadius;
-              frameWrapper.style.boxShadow = originalBoxShadow;
-              frameWrapper.style.border = originalBorder;
-              frameWrapper.style.overflow = originalOverflow;
-              
-              var link = document.createElement("a");
-              link.download = "Guiloiyeuthuong.png";
-              link.href = data1;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              $(".loader-wrapper").hide();
-            });
+            cleanup();
+            resolve(dataUrl);
           })
           .catch(function (error) {
-            // Restore original styles on error
-            frameWrapper.style.background = originalBg;
-            frameWrapper.style.padding = originalPadding;
-            frameWrapper.style.borderRadius = originalBorderRadius;
-            frameWrapper.style.boxShadow = originalBoxShadow;
-            frameWrapper.style.border = originalBorder;
-            frameWrapper.style.overflow = originalOverflow;
-            
-            // Restore name position
-            if (nameElement) {
-              nameElement.style.top = originalNameTop || "";
-            }
-            
-            console.error("Error generating image:", error);
-            $(".loader-wrapper").hide();
-            alert("Có lỗi xảy ra khi tạo ảnh. Vui lòng thử lại.");
+            cleanup();
+            reject(error);
           });
-      }, 200);
-    }).catch(function(error) {
-      console.error("Font loading error:", error);
-      // Continue anyway if font loading fails
-      var frameWrapper = document.getElementById("frame-wrapper");
-      const scaleObject = window.innerWidth < 768 ? 10 : 5;
-      
-      // Store and remove styles
-      const originalBg = frameWrapper.style.background;
-      const originalPadding = frameWrapper.style.padding;
-      const originalBorderRadius = frameWrapper.style.borderRadius;
-      const originalBoxShadow = frameWrapper.style.boxShadow;
-      const originalBorder = frameWrapper.style.border;
-      
-      frameWrapper.style.background = "transparent";
-      frameWrapper.style.padding = "0";
-      frameWrapper.style.borderRadius = "0";
-      frameWrapper.style.boxShadow = "none";
-      frameWrapper.style.border = "none";
-      
-      var options = {
-        width: frameWrapper.offsetWidth * scaleObject,
-        height: frameWrapper.offsetHeight * scaleObject,
-        style: {
-          transform: "scale(" + scaleObject + ")",
-          transformOrigin: "top left",
-        },
-        quality: 1,
-        useCORS: true,
-        cacheBust: true,
-        bgcolor: "transparent",
-      };
-      domtoimage.toPng(frameWrapper, options).then(function (data1) {
-        // Restore styles
-        frameWrapper.style.background = originalBg;
-        frameWrapper.style.padding = originalPadding;
-        frameWrapper.style.borderRadius = originalBorderRadius;
-        frameWrapper.style.boxShadow = originalBoxShadow;
-        frameWrapper.style.border = originalBorder;
-        
-        var link = document.createElement("a");
-        link.download = "Guiloiyeuthuong.png";
-        link.href = data1;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        })
+        .catch(reject);
+    });
+  }
+
+  function handleExportError(error) {
+    console.error("Error generating image:", error);
+    alert("Có lỗi xảy ra khi tạo ảnh. Vui lòng thử lại.");
+  }
+
+  $("#submit").click(function () {
+    $(".loader-wrapper").show();
+
+    waitForExportFonts()
+      .catch(function (error) {
+        console.warn("Font loading warning:", error);
+      })
+      .then(buildExportImage)
+      .then(function (dataUrl) {
+        triggerDownload(dataUrl, "Guiloiyeuthuong.png");
+      })
+      .catch(handleExportError)
+      .finally(function () {
         $(".loader-wrapper").hide();
       });
-    });
   });
 });
 
