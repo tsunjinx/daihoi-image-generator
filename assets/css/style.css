@@ -307,7 +307,7 @@ label span {
   font-family: "Roboto", sans-serif;
   font-weight: bold;
   font-size: 25px;
-  color: #ffd03e;
+  color: #f5db89;
   display: inline-block;
   line-height: 29px;
   z-index: 10;
@@ -321,7 +321,7 @@ label span {
 .name-content {
   display: block;
   line-height: 1;
-  color: #ffd03e;
+  color: #f5db89;
   white-space: nowrap;
 }
 
