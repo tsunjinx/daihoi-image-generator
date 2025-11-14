@@ -222,7 +222,7 @@ label span {
 .frame-wrapper__img {
   position: relative;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   box-sizing: border-box;
   transform: translateZ(0);
   isolation: isolate;
@@ -299,9 +299,8 @@ label span {
 .name {
   position: absolute;
   left: 818px;
-  top: 637px;
-  width: 268px;
-  min-height: 29px;
+  top: 639px;
+  min-width: 268px;
   text-align: left;
   padding: 0;
   margin: 0;
@@ -309,22 +308,21 @@ label span {
   font-weight: bold;
   font-size: 25px;
   color: #ffffff;
-  display: block;
-  line-height: 1.2;
+  display: inline-block;
+  line-height: 29px;
   z-index: 10;
-  white-space: normal;
-  overflow: hidden;
+  white-space: nowrap;
+  overflow: visible;
   box-sizing: border-box;
-  min-width: 0;
-  max-width: 100%;
+  min-width: 268px;
+  max-width: none;
 }
 
 .name-content {
   display: block;
-  line-height: 1.2;
+  line-height: 1;
   color: #ffffff;
-  white-space: normal;
-  word-break: break-word;
+  white-space: nowrap;
 }
 
 .name-content span {
@@ -335,7 +333,7 @@ label span {
 .title {
   position: absolute;
   left: 746px;
-  top: 660px;
+  top: 670px;
   width: 317px;
   min-height: 65px;
   padding: 0 3px;
@@ -345,7 +343,7 @@ label span {
   display: block;
   white-space: normal;
   word-break: break-word;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: bold;
   font-family: "Roboto", sans-serif;
 }
@@ -356,7 +354,7 @@ label span {
   top: 324px;
   width: 655px;
   height: 424px;
-  font-size: 16px;
+  font-size: 24px;
   line-height: 1.5;
   color: #ffffff;
   letter-spacing: 1.2px;

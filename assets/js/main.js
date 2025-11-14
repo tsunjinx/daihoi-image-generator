@@ -267,7 +267,7 @@ function cloneCanvasForExport(canvas) {
       })
       .then(buildExportImage)
       .then(function (dataUrl) {
-        triggerDownload(dataUrl, "Guiloiyeuthuong.png");
+        triggerDownload(dataUrl, "kyvongdaihoi.png");
       })
       .catch(handleExportError)
       .finally(function () {
